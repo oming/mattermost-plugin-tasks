@@ -1,14 +1,18 @@
-import React, {useCallback, useEffect} from 'react';
+/* eslint-disable react/prop-types */
+import React, {useCallback, useEffect, useMemo} from 'react';
 
 import {Alert} from 'react-bootstrap';
+
+import {Column} from 'react-table';
 
 import Loader from '@/components/loader';
 
 import {useAppDispatch, useAppSelector} from '@/hooks';
 
-import {globalSliceSelector} from '@/reducers/globalSlice';
+import {globalSliceSelector, setStep} from '@/reducers/globalSlice';
 
 import {
+    fetchDelteTask,
     fetchTaskByChannelId,
     setShowPanel,
     taskSliceSelector,
@@ -18,8 +22,14 @@ import Panel from '@/components/panel';
 
 import {MainTitleBar} from '@/components/titleBar';
 
+import Table from '../Table';
+
+import {mmComponent, timeToStr} from '@/utils/utils';
+import {TaskType} from '@/types';
+
 import NewTaskForm from './NewTaskForm';
-import Table from './Table';
+import ModifyTaskForm from './ModifyTaskForm';
+// import Table from './Table';
 
 export default function Main() {
     const dispatch = useAppDispatch();
@@ -41,6 +51,62 @@ export default function Main() {
             dispatch(setShowPanel(true));
         }
     }, [dispatch, showPanel]);
+
+    const handdleTaskIdClick = useCallback(
+        (task: TaskType) => () => {
+            dispatch(setStep({type: 'job', task}));
+        },
+        [dispatch],
+    );
+
+    const handdleTaskDeleteClick = useCallback(
+        (task: TaskType) => () => {
+            dispatch(
+                fetchDelteTask({
+                    channelId: channel.id,
+                    taskId: task.taskId,
+                }),
+            );
+        },
+        [channel.id, dispatch],
+    );
+
+    const columns = useMemo<Column<TaskType>[]>(
+        () => [
+            {
+                Header: '#',
+                accessor: 'num',
+                maxWidth: 50,
+            },
+            {
+                Header: 'Title',
+                accessor: 'taskTitle',
+                Cell: ({row: {original}, cell: {value}}) => {
+                    return (
+                        <a onClick={handdleTaskIdClick(original)}>
+                            {mmComponent(value)}
+                        </a>
+                    );
+                },
+                disableSortBy: true,
+            },
+            {
+                Header: 'User',
+                accessor: 'userName',
+                Cell: ({cell: {value}}) => mmComponent(value),
+                // Filter: selectColumnFilter,
+                // filter: 'includes',
+                disableSortBy: true,
+            },
+            {
+                Header: 'Created At',
+                accessor: 'createAt',
+                Cell: ({cell: {value}}) => timeToStr(value),
+                maxWidth: 150,
+            },
+        ],
+        [handdleTaskIdClick],
+    );
 
     return (
         <>
@@ -64,7 +130,15 @@ export default function Main() {
                 </Panel>
             )}
             <Loader loading={loading} message='데이터 로딩중입니다.' />
-            <Table channel={channel} entities={entities} editable={!direct} />
+            <Table
+                columns={columns}
+                data={entities}
+                handleDeleteClick={handdleTaskDeleteClick}
+                renderModifyComponent={(data) => (
+                    <ModifyTaskForm channel={channel} row={data} />
+                )}
+                editable={!direct}
+            />
         </>
     );
 }

@@ -3,7 +3,8 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-key */
 /* eslint-disable react/prop-types */
-import React, {useCallback, useMemo} from 'react';
+
+import React from 'react';
 
 import {
     Button,
@@ -18,7 +19,6 @@ import {
     Row,
 } from 'react-bootstrap';
 
-import {Channel} from 'mattermost-redux/types/channels';
 import {
     Column,
     useExpanded,
@@ -28,88 +28,28 @@ import {
     useTable,
 } from 'react-table';
 
-import {TaskType} from '@/types';
-import {logDebug} from '@/utils/log';
-import {mmComponent, timeToStr} from '@/utils/utils';
-import {useAppDispatch} from '@/hooks';
-import {setStep} from '@/reducers/globalSlice';
-import {fetchDelteTask} from '@/reducers/taskSlice';
+import {JobType, TaskType} from '@/types';
 
 import Panel from '@/components/panel';
-
-import ModifyTaskForm from './ModifyTaskForm';
-
-interface Props {
-    channel: Channel;
-    entities: TaskType[];
-    editable: boolean;
+interface Props<T extends object> {
+    columns: Column<T>[];
+    data: T[];
+    editable?: boolean;
+    renderModifyComponent: (data: any) => React.ReactNode;
+    handleDeleteClick: (value: T) => () => void;
 }
 
-export default function Table({channel, entities, editable = true}: Props) {
-    const dispatch = useAppDispatch();
-
-    const handdleTaskIdClick = useCallback(
-        (task: TaskType) => () => {
-            dispatch(setStep({type: 'job', task}));
-        },
-        [dispatch],
-    );
-
-    const handdleTaskDeleteClick = useCallback(
-        (task: TaskType) => () => {
-            logDebug(task + ' Delete');
-            dispatch(
-                fetchDelteTask({
-                    channelId: channel.id,
-                    taskId: task.taskId,
-                }),
-            );
-        },
-        [channel.id, dispatch],
-    );
-
-    const columns = useMemo<Column<TaskType>[]>(
-        () => [
-            {
-                Header: '#',
-                accessor: 'num',
-                maxWidth: 50,
-            },
-            {
-                Header: 'Title',
-                accessor: 'taskTitle',
-                Cell: ({row: {original}, cell: {value}}) => {
-                    return (
-                        <a onClick={handdleTaskIdClick(original)}>
-                            {mmComponent(value)}
-                        </a>
-                    );
-                },
-                disableSortBy: true,
-            },
-            {
-                Header: 'User',
-                accessor: 'userName',
-                Cell: ({cell: {value}}) => mmComponent(value),
-                // Filter: selectColumnFilter,
-                // filter: 'includes',
-                disableSortBy: true,
-            },
-            {
-                Header: 'Created At',
-                accessor: 'createAt',
-                Cell: ({cell: {value}}) => timeToStr(value),
-                maxWidth: 150,
-            },
-        ],
-        [handdleTaskIdClick],
-    );
-
+export default function Table<T extends object>({
+    columns,
+    data,
+    editable = true,
+    renderModifyComponent,
+    handleDeleteClick,
+}: Props<T>) {
     // Use the state and functions returned from useTable to build your UI
     const {
         getTableProps,
         headerGroups,
-        rows,
         prepareRow,
         getTableBodyProps,
         visibleColumns,
@@ -123,10 +63,10 @@ export default function Table({channel, entities, editable = true}: Props) {
         previousPage,
         setPageSize,
         state: {pageIndex, pageSize},
-    } = useTable(
+    } = useTable<T>(
         {
             columns,
-            data: entities,
+            data,
         },
         // useFilters,
         useSortBy,
@@ -139,6 +79,7 @@ export default function Table({channel, entities, editable = true}: Props) {
                 {
                     id: 'more',
                     Header: 'More',
+                    //@ts-ignore
                     Cell: ({row}) => {
                         return (
                             <ButtonToolbar disabled={!editable}>
@@ -157,9 +98,7 @@ export default function Table({channel, entities, editable = true}: Props) {
                                     style={{
                                         color: 'darkred',
                                     }}
-                                    onClick={handdleTaskDeleteClick(
-                                        row.original,
-                                    )}
+                                    onClick={handleDeleteClick(row.original)}
                                 >
                                     <Glyphicon glyph='trash' />
                                 </Button>
@@ -245,10 +184,7 @@ export default function Table({channel, entities, editable = true}: Props) {
                                     <tr>
                                         <td colSpan={visibleColumns.length}>
                                             <Panel headerTitle='작업을 수정 합니다.'>
-                                                <ModifyTaskForm
-                                                    channel={channel}
-                                                    row={row}
-                                                />
+                                                {renderModifyComponent(row)}
                                             </Panel>
                                         </td>
                                     </tr>
