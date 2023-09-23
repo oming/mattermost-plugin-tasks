@@ -212,7 +212,6 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	subCmd := fields[1]
-	p.API.LogDebug("ExecuteCommand", "args", args, "subCmd: ", subCmd, "fields", fields)
 	for i, ss := range fields {
 		p.API.LogDebug("ExecuteCommand Debug fields", "number", i, "field", ss)
 	}
@@ -329,7 +328,6 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 
 // tasks show
 func (p *Plugin) showCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
-	p.API.LogDebug("showCmmand Execute")
 	var msg string
 
 	taskList, err := p.GetTaskList(args.ChannelId)
@@ -337,11 +335,7 @@ func (p *Plugin) showCommand(args *model.CommandArgs, fields []string) (*model.C
 		msg = "Error...."
 	}
 
-	p.API.LogDebug("showCmmand Execute", "taskList", taskList)
-
 	msg = p.taskListToString(taskList)
-
-	p.API.LogDebug("showCmmand Execute", "msg", msg)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
@@ -352,10 +346,8 @@ func (p *Plugin) showCommand(args *model.CommandArgs, fields []string) (*model.C
 
 // tasks new "aaaaaaaaaa cdd dc ddc d"
 func (p *Plugin) newCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
-	p.API.LogDebug("newCmmand Execute")
 
 	terms := strings.Join(fields[2:], " ")
-	p.API.LogDebug("newCmmand Execute", "terms", terms)
 
 	if terms == "" {
 		p.postCommandResponse(args, "Please Task Title...")
@@ -367,11 +359,9 @@ func (p *Plugin) newCommand(args *model.CommandArgs, fields []string) (*model.Co
 	task, taskErr := p.newTask(args.ChannelId, terms, args.UserId)
 	if taskErr != nil {
 		p.API.LogError("newCmmand Execute", "taskErr", taskErr.Error())
-
 	}
 
 	msg = "task_id: " + task.TaskID + ", task_title: " + task.TaskTitle + ", user_id: " + task.UserId
-	p.API.LogDebug("newCmmand Execute", "msg", msg)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
@@ -381,10 +371,8 @@ func (p *Plugin) newCommand(args *model.CommandArgs, fields []string) (*model.Co
 
 // tasks delete "hkjw8ykhspb9jyzfd8nfserdte"
 func (p *Plugin) deleteCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
-	p.API.LogDebug("deleteCmmand Execute")
 
 	taskId := strings.Join(fields[2:], " ")
-	p.API.LogDebug("deleteCmmand Execute", "taskId", taskId)
 
 	if taskId == "" {
 		p.postCommandResponse(args, "Please Task Title...")
@@ -408,10 +396,8 @@ func (p *Plugin) deleteCommand(args *model.CommandArgs, fields []string) (*model
 
 // tasks list "hkjw8ykhspb9jyzfd8nfserdte"
 func (p *Plugin) listCommand(fields []string) (*model.CommandResponse, error) {
-	p.API.LogDebug("listCmmand Execute")
 
 	taskId := strings.Join(fields[2:], " ")
-	p.API.LogDebug("listCmmand Execute", "taskId", taskId)
 
 	if taskId == "" {
 		return nil, fmt.Errorf("Invalid taskId arguments")
@@ -423,14 +409,10 @@ func (p *Plugin) listCommand(fields []string) (*model.CommandResponse, error) {
 		msg += "Error...."
 	}
 
-	p.API.LogDebug("listCmmand Execute", "jobs", jobs)
-
 	msg += "#### taskId: " + taskId
 	msg += "\n"
 
 	msg += p.jobListToMarkdownStr(jobs)
-
-	p.API.LogDebug("listCmmand Execute", "msg", msg)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
@@ -440,12 +422,9 @@ func (p *Plugin) listCommand(fields []string) (*model.CommandResponse, error) {
 
 // /tasks add [#task_id] [job_title] [job_content]
 func (p *Plugin) addCommand(args *model.CommandArgs, fields []string) (*model.CommandResponse, error) {
-	p.API.LogDebug("addCmmand Execute", "fields", fields)
 	taskId := fields[2]
 	jobTitle := fields[3]
 	jobContent := strings.Join(fields[4:], " ")
-
-	p.API.LogDebug("addCmmand Execute", "taskId", taskId, "jobTitle", jobTitle, "jobContent", jobContent)
 
 	if taskId == "" {
 		return nil, fmt.Errorf("Invalid taskId arguments")
@@ -463,7 +442,6 @@ func (p *Plugin) addCommand(args *model.CommandArgs, fields []string) (*model.Co
 	}
 
 	msg = "job_id: " + job.JobID + ", job_title: " + job.JobTitle + ", job_content: " + job.JobContent + ", job_status" + job.JobStatus + ", user_id: " + job.UserId
-	p.API.LogDebug("addCmmand Execute", "msg", msg)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
@@ -473,7 +451,6 @@ func (p *Plugin) addCommand(args *model.CommandArgs, fields []string) (*model.Co
 
 // /tasks remove [#task_id] [#job_id]
 func (p *Plugin) removeCommand(fields []string) (*model.CommandResponse, error) {
-	p.API.LogDebug("removeCmmand Execute", "fields", fields)
 	taskId := fields[2]
 	jobId := fields[3]
 
@@ -486,7 +463,6 @@ func (p *Plugin) removeCommand(fields []string) (*model.CommandResponse, error) 
 	p.removeJob(taskId, jobId)
 
 	msg = "Remove Job. task_id: " + taskId + ", job_id: " + jobId + ". compited"
-	p.API.LogDebug("removeCommand Execute", "msg", msg)
 
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
@@ -496,18 +472,28 @@ func (p *Plugin) removeCommand(fields []string) (*model.CommandResponse, error) 
 
 // /tasks status [#task_id] [#job_id] [open|done]
 func (p *Plugin) statusCommand(fields []string) (*model.CommandResponse, error) {
-	var msg string
-	if len(fields) != 3 {
-		return nil, fmt.Errorf("Invalid number of arguments provided")
+
+	taskId := fields[2]
+	jobId := fields[3]
+	status := fields[4]
+
+	if taskId == "" || jobId == "" || status == "" {
+		return nil, fmt.Errorf("taskId or jobId or status arguments is empty")
 	}
-	if fields[2] == "on" {
+
+	var msg string
+	if fields[2] == "open" {
 		msg = "Experimental features were turned on"
-	} else if fields[2] == "off" {
+	} else if fields[2] == "done" {
 		msg = "Experimental features were turned off"
 	}
-	if msg == "" {
-		return nil, fmt.Errorf("Invalid arguments provided")
+
+	err := p.statusJob(taskId, jobId, status)
+	if err != nil {
+		p.API.LogError("statusCmmand Execute", "err", err.Error())
+
 	}
+
 	return &model.CommandResponse{
 		ResponseType: model.CommandResponseTypeEphemeral,
 		Text:         msg,

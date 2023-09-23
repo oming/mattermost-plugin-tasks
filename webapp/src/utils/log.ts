@@ -16,5 +16,5 @@ export function logInfo(...args: unknown[]) {
 
 export function logDebug(...args: unknown[]) {
     // TODO: convert to debug once we are out of beta.
-    console.info(`${pluginId}:`, ...args);
+    console.debug(`${pluginId}:`, ...args);
 }

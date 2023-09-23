@@ -45,7 +45,7 @@ func (p *Plugin) jobListToMarkdownStr(jobs []*Job) string {
 		mmMention := ""
 		mmUser, getErr := p.API.GetUser(job.UserId)
 		if getErr != nil {
-			p.API.LogDebug("Unable to get mm user details", "Error", getErr.Error())
+			p.API.LogError("Unable to get mm user details", "Error", getErr.Error())
 		} else {
 			mmMention = fmt.Sprintf("@%s ", mmUser.Username)
 		}

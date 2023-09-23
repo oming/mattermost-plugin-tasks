@@ -1,10 +1,14 @@
 import React from 'react';
 
-export default function TaskIcon() {
+interface Props {
+    style?: React.CSSProperties;
+}
+
+export default function TaskIcon({style = {fontSize: '18px'}}: Props) {
     return (
         <i
             className='glyphicon glyphicon-check'
-            style={{fontSize: '18px', color: 'red'}}
+            style={style}
             aria-hidden={true}
         />
     );
