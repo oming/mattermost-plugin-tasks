@@ -54,11 +54,7 @@ export default class Plugin {
             <TaskIcon />,
             (channel) => {
                 if (channel) {
-                    logInfo(
-                        '채널이 선택되었습니다.',
-                        channel,
-                        store.getState(),
-                    );
+                    logInfo('Seleted Channel.', channel, store.getState());
                     store.dispatch(globalModalOpen(channel) as Action);
                 }
             },

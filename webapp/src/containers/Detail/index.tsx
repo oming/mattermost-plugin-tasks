@@ -1,4 +1,7 @@
-import React, {useCallback, useEffect} from 'react';
+/* eslint-disable react/prop-types */
+import React, {useCallback, useEffect, useMemo} from 'react';
+
+import {Column} from 'react-table';
 
 import Panel from '@/components/panel';
 
@@ -11,12 +14,22 @@ import {
     fetchJobByTaskId,
     setShowPanel,
     reset as jobReset,
+    fetchRemoveJob,
+    fetchStatusJob,
 } from '@/reducers/jobSlice';
 
 import {globalSliceSelector, setStep} from '@/reducers/globalSlice';
 
+import Table from '../Table';
+
+import {JobType} from '@/types';
+
+import {mmComponent, timeToStr} from '@/utils/utils';
+
+import Status from '@/components/status';
+
 import AddJobForm from './AddJobForm';
-import Table from './Table';
+import ModifyJobForm from './ModifyJobForm';
 
 export default function Detail() {
     const dispatch = useAppDispatch();
@@ -50,6 +63,79 @@ export default function Detail() {
         }
     }, [dispatch, showPanel]);
 
+    const handdleStatusToggle = useCallback(
+        (job: JobType) => () => {
+            if (task && !direct) {
+                dispatch(
+                    fetchStatusJob({
+                        taskId: task.taskId,
+                        jobId: job.jobId,
+                        jobStatus: job.jobStatus === 'open' ? 'done' : 'open',
+                    }),
+                );
+            }
+        },
+        [direct, dispatch, task],
+    );
+
+    const handdleJobDeleteClick = useCallback(
+        (job: JobType) => () => {
+            if (task) {
+                dispatch(
+                    fetchRemoveJob({taskId: task.taskId, jobId: job.jobId}),
+                );
+            }
+        },
+        [dispatch, task],
+    );
+    const columns = useMemo<Column<JobType>[]>(
+        () => [
+            {
+                Header: '#',
+                accessor: 'num',
+                maxWidth: 50,
+            },
+            {
+                Header: 'Title',
+                accessor: 'jobTitle',
+                Cell: ({cell: {value}}) => mmComponent(value),
+                disableSortBy: true,
+            },
+            {
+                Header: 'Content',
+                accessor: 'jobContent',
+                Cell: ({cell: {value}}) => mmComponent(value),
+                disableSortBy: true,
+            },
+            {
+                Header: 'Status',
+                accessor: 'jobStatus',
+                Cell: ({row: {original}, cell: {value}}) => {
+                    return (
+                        <Status
+                            status={value}
+                            onEventCallback={handdleStatusToggle(original)}
+                        />
+                    );
+                },
+                disableSortBy: true,
+            },
+            {
+                Header: 'User',
+                accessor: 'userName',
+                Cell: ({cell: {value}}) => mmComponent(value),
+                disableSortBy: true,
+            },
+            {
+                Header: 'Created At',
+                accessor: 'createAt',
+                Cell: ({cell: {value}}) => timeToStr(value),
+                maxWidth: 150,
+            },
+        ],
+        [handdleStatusToggle],
+    );
+
     if (!task) {
         return <></>;
     }
@@ -69,7 +155,15 @@ export default function Detail() {
             )}
 
             <Loader loading={loading} message='데이터 로딩중입니다.' />
-            <Table task={task} entities={entities} editable={!direct} />
+            <Table
+                columns={columns}
+                data={entities}
+                handleDeleteClick={handdleJobDeleteClick}
+                renderModifyComponent={(data) => (
+                    <ModifyJobForm task={task} row={data} />
+                )}
+                editable={!direct}
+            />
         </>
     );
 }
