@@ -1,10 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"sync"
 
+	"github.com/gin-gonic/gin"
 	"github.com/mattermost/mattermost/server/public/plugin"
 )
 
@@ -24,63 +24,78 @@ type Plugin struct {
 }
 
 // ServeHTTP demonstrates a plugin that handles HTTP requests by greeting the world.
+/**
+GET		/{channelId}/tasks    			모든 목록 조회(show)
+POST	/{channelId}/tasks   			tasks 생성 (new)
+			{task_title: "xxxx"}
+PUT		/{channelId}/tasks/{taskId}		task 수정
+			{task_title: "xxxx"}
+DELETE	/{channelId}/tasks/{taskId}		tasks 제거 (delete)
+
+GET		/{taskId}/jobs					할일 목록 조회(list)
+POST    /{taskId}/jobs					할일 목록 추가(add)
+			{jobTitle: "XXX", jobContent: "XXX"}
+PUT		/{taskId}/jobs/{jobId}			할일 목록 수정
+			{jobTitle: "XXX", jobContent: "XXX"}
+DELETE  /{taskId}/jobs/{jobId}			할일 제거(remove)
+PUT     /{taskId}/jobs/{jobId}/status	상태변경(status)
+			{status: "open|done"}
+
+GET 	/config							설정 파일 확인
+*/
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	p.API.LogDebug("ServeHTTP Start")
-	w.Header().Set("Content-Type", "application/json")
+	p.API.LogDebug("hsan: ServeHTTP Starting")
 
-	userID := r.Header.Get("Mattermost-User-Id")
-	if userID == "" {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	// 로그 색상을 비활성화 합니다
+	gin.DisableConsoleColor()
+	router := gin.Default()
+	// gin.DebugPrintRouteFunc = func(httpMethod, absolutePath, handlerName string, nuHandlers int) {
+	// 	p.API.LogDebug(fmt.Sprintf("hsan: HTTP > %s > %s > %s > %d", httpMethod, absolutePath, handlerName, nuHandlers))
+	// }
 
-	p.API.LogDebug("UserID: " + userID)
+	router.Use(p.ginlogger)
+	router.Use(p.MattermostAuthorizationRequired)
 
-	/**
-	GET    /tasks?channelId={XXX}    	모든 목록 조회(show)
-	POST   /tasks   	 				tasks 생성 (new)
-			{channelId: "XXX", task_title: "xxxx"}
-	DELETE /tasks    					tasks 제거 (delete)
-			{channelId: "XXX", task_id: "xxx"}
+	taskRouter := router.Group("t/:channelId")
+	taskRouter.Use(p.ChannelRequired)
+	taskRouter.GET("/tasks", p.handleTask)
+	taskRouter.POST("/tasks", p.handleTaskCreate)
+	taskRouter.PUT("tasks/:taskId", p.handleTaskUpdate)
+	taskRouter.DELETE("tasks/:taskId", p.handleTaskDelete)
 
-	GET     /jobs?taskId={XXX}		할일 목록 조회(list)
-	POST    /jobs					할일 목록 추가(add)
-			{taskId: "xxx", jobTitle: "XXX", jobContent: "XXX"}
-	DELETE  /jobs       			할일 제거(remove)
-			{taskId: "xxx", "jobId: "xxx"}
-	PUT     /jobs       			상태변경(status)
-			{taskId: "xxx", "jobId: "xxx", status: "open|done"}
+	jobRouter := router.Group("j/:taskId")
+	jobRouter.Use(p.TaskRequired)
+	jobRouter.GET("/jobs", p.handleJob)
+	jobRouter.POST("/jobs", p.handleJobCreate)
+	jobRouter.PUT("/jobs/:jobId", p.handleJobUpdate)
+	jobRouter.DELETE("/jobs/:jobId", p.handleJobDelete)
+	jobRouter.PUT("/jobs/:jobId/status", p.handleJobStatusUpdate)
 
-	GET 	/config					설정 파일 확인
-	*/
+	router.GET("/config", p.handleGetConfig)
 
-	switch path := r.URL.Path; path {
-	case "/tasks":
-		p.httpTasks(w, r)
-	case "/jobs":
-		p.httpJobs(w, r)
-	case "/config":
-		p.httpConfig(w, r)
-	default:
-		http.NotFound(w, r)
+	router.ServeHTTP(w, r)
+
+}
+
+func (p *Plugin) ginlogger(c *gin.Context) {
+	c.Next()
+
+	for _, ginErr := range c.Errors {
+		p.API.LogError(ginErr.Error())
 	}
 }
 
-func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
-	p.API.LogDebug("writeJSON", "value", v)
-	b, err := json.Marshal(v)
-	if err != nil {
-		p.API.LogWarn("Failed to marshal JSON response", "error", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+func (p *Plugin) MattermostAuthorizationRequired(c *gin.Context) {
+	userID := c.GetHeader("Mattermost-User-Id")
+	if userID == "" {
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-
-	_, err = w.Write(b)
-	if err != nil {
-		p.API.LogWarn("Failed to write JSON response", "error", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+	if _, err := p.API.GetUser(userID); err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+	c.Set("userId", userID)
 }
 
 // See https://developers.mattermost.com/extend/plugins/server/reference/

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
 import React, {useCallback} from 'react';
 
 import {
@@ -10,14 +8,16 @@ import {
     FormGroup,
 } from 'react-bootstrap';
 
-import {GlobalState} from 'mattermost-redux/types/store';
 import {Controller, useForm} from 'react-hook-form';
 
-import Client from '@/client';
-import {TasksType} from '@/types';
-import {logDebug} from '@/utils/log';
+import {DirectPostType, TaskType} from '@/types';
+import {useAppDispatch, useAppSelector} from '@/hooks';
+import {fetchNewJob} from '@/reducers/jobSlice';
+import {getServerRoute} from '@/utils/utils';
+import {resetDirectPost} from '@/reducers/globalSlice';
 interface Props {
-    task: TasksType;
+    task: TaskType;
+    direct?: DirectPostType;
 }
 
 interface FormData {
@@ -25,33 +25,38 @@ interface FormData {
     jobTitle: string;
     jobContent: string;
 }
-export default function AddJobForm({task}: Props) {
-    logDebug('AddJobForm Rendering');
+export default function AddJobForm({task, direct}: Props) {
+    const dispatch = useAppDispatch();
 
+    const serverRoute = useAppSelector((state) => getServerRoute(state));
+    let message = '';
+    if (direct) {
+        const {post, team} = direct;
+        message =
+            post.message +
+            `\n[Permalink](${serverRoute}/${team.name}/pl/${post.id})`;
+    }
     const {
         handleSubmit,
         formState: {errors},
         control,
     } = useForm<FormData>({
         defaultValues: {
-            taskId: task.task_id,
+            taskId: task.taskId,
             jobTitle: '',
-            jobContent: '',
+            jobContent: message,
         },
     });
 
-    const onSubmit = useCallback((formValues: FormData) => {
-        if (formValues) {
-            logDebug('formValues', formValues);
-            Client.postJobs({
-                task_id: formValues.taskId,
-                job_title: formValues.jobTitle,
-                job_content: formValues.jobContent,
-            }).then((result) => {
-                logDebug('result:', result);
-            });
-        }
-    }, []);
+    const onSubmit = useCallback(
+        (formValues: FormData) => {
+            if (formValues) {
+                dispatch(fetchNewJob(formValues));
+                dispatch(resetDirectPost());
+            }
+        },
+        [dispatch],
+    );
 
     return (
         <Form onSubmit={handleSubmit(onSubmit)}>

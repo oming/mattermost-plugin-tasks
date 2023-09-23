@@ -22,14 +22,23 @@ func taskKey(taskID string) string {
 }
 
 func (p *Plugin) GetTaskList(channelID string) ([]*Task, error) {
-	p.API.LogDebug("GetTaskList", "channelId", channelID)
+
+	if channelID == "" {
+		return nil, errors.New("ChannelID is required.")
+	} else {
+		_, err := p.API.GetChannel(channelID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	originalJSONList, err := p.API.KVGet(channelKey(channelID))
 	if err != nil {
 		return nil, err
 	}
 
 	if originalJSONList == nil {
-		p.API.LogDebug("GetTaskList originalJSONList Empty")
+		p.API.LogError("GetTaskList originalJSONList Empty")
 		return []*Task{}, nil
 	}
 
@@ -39,19 +48,28 @@ func (p *Plugin) GetTaskList(channelID string) ([]*Task, error) {
 		return nil, jsonErr
 	}
 
-	p.API.LogDebug("GetTaskList", "list", list)
 	return list, nil
 }
 
 func (p *Plugin) newTask(channelId, taskTitle, userId string) (*Task, error) {
-	p.API.LogDebug("newTask", "channelId", channelId, "taskTitle", taskTitle, "userId", userId)
+
+	if channelId == "" {
+		return nil, errors.New("ChannelID is required.")
+	} else {
+		_, err := p.API.GetChannel(channelId)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if taskTitle == "" {
+		return nil, errors.New("taskTitle is required.")
+	}
+
 	task := newTask(taskTitle, userId)
 
 	taskList, _ := p.GetTaskList(channelId)
-	p.API.LogDebug("newTask taskList", "taskList", taskList)
 
 	taskList = append(taskList, task)
-	p.API.LogDebug("newTask taskList append", "taskList", taskList)
 
 	jsonTaskList, jsonErr := json.Marshal(taskList)
 	if jsonErr != nil {
@@ -74,15 +92,68 @@ func (p *Plugin) newTask(channelId, taskTitle, userId string) (*Task, error) {
 	return task, nil
 }
 
+func (p *Plugin) updateTask(channelId, taskId, taskTitle, userId string) error {
+
+	if channelId == "" {
+		return errors.New("ChannelID is required.")
+	} else {
+		_, err := p.API.GetChannel(channelId)
+		if err != nil {
+			return err
+		}
+	}
+	if taskId == "" {
+		return errors.New("taskId is required.")
+	}
+	if taskTitle == "" {
+		return errors.New("taskTitle is required.")
+	}
+
+	taskList, _ := p.GetTaskList(channelId)
+
+	found := false
+	for i, ir := range taskList {
+		if ir.TaskID == taskId {
+			task := taskList[i]
+			task.TaskTitle = taskTitle
+			found = true
+		}
+	}
+
+	if !found {
+		return errors.New("cannot find taskId")
+	}
+
+	jsonTaskList, jsonErr := json.Marshal(taskList)
+	if jsonErr != nil {
+		return jsonErr
+	}
+
+	appErr := p.API.KVSet(channelKey(channelId), jsonTaskList)
+	if appErr != nil {
+		return errors.New(appErr.Error())
+	}
+
+	return nil
+}
+
 func (p *Plugin) deleteTask(channelId, taskId string) error {
-	p.API.LogDebug("deleteTask", "taskId", taskId)
+
+	if channelId == "" {
+		return errors.New("ChannelID is required.")
+	} else {
+		_, err := p.API.GetChannel(channelId)
+		if err != nil {
+			return err
+		}
+	}
+
 	appErr := p.API.KVDelete(taskKey(taskId))
 	if appErr != nil {
 		return errors.New(appErr.Error())
 	}
 
 	taskList, _ := p.GetTaskList(channelId)
-	p.API.LogDebug("deleteTask taskList", "taskList", taskList)
 
 	found := false
 	for i, ir := range taskList {
@@ -110,14 +181,17 @@ func (p *Plugin) deleteTask(channelId, taskId string) error {
 }
 
 func (p *Plugin) listJobs(taskId string) ([]*Job, error) {
-	p.API.LogDebug("listJobs", "taskId", taskId)
+	if taskId == "" {
+		return nil, errors.New("taskId is required.")
+	}
+
 	originalJSONList, err := p.API.KVGet(taskKey(taskId))
 	if err != nil {
 		return nil, err
 	}
 
 	if originalJSONList == nil {
-		p.API.LogDebug("listJobs originalJSONList Empty")
+		p.API.LogError("listJobs originalJSONList Empty")
 		return []*Job{}, nil
 	}
 
@@ -127,19 +201,23 @@ func (p *Plugin) listJobs(taskId string) ([]*Job, error) {
 		return nil, jsonErr
 	}
 
-	p.API.LogDebug("listJobs", "list", list)
 	return list, nil
 }
 
 func (p *Plugin) addJob(taskId, jobTitle, jobContent, userId string) (*Job, error) {
-	p.API.LogDebug("addJob", "taskId", taskId, "jobTitle", jobTitle, "jobContent", jobContent, "userId", userId)
+
+	if taskId == "" {
+		return nil, errors.New("taskId is required.")
+	}
+	if jobTitle == "" || jobContent == "" {
+		return nil, errors.New("taskId or jobContent is required.")
+	}
+
 	job := newJob(jobTitle, jobContent, userId)
 
 	jobList, _ := p.listJobs(taskId)
-	p.API.LogDebug("addJob", "jobList", jobList)
 
 	jobList = append(jobList, job)
-	p.API.LogDebug("addJob jobList append", "jobList", jobList)
 
 	jsonJobList, jsonErr := json.Marshal(jobList)
 	if jsonErr != nil {
@@ -154,16 +232,105 @@ func (p *Plugin) addJob(taskId, jobTitle, jobContent, userId string) (*Job, erro
 	return job, nil
 }
 
-func (p *Plugin) removeJob(taskId, jobId string) error {
-	p.API.LogDebug("removeJob", "taskId", taskId, "jobId", jobId)
+func (p *Plugin) updateJob(taskId, jobId, jobTitle, jobContent string) error {
+	if taskId == "" {
+		return errors.New("taskId is required.")
+	}
+	if jobId == "" {
+		return errors.New("jobId is required.")
+	}
+	if jobTitle == "" {
+		return errors.New("jobTitle is required.")
+	}
+	if jobContent == "" {
+		return errors.New("jobContent is required.")
+	}
 
 	jobList, _ := p.listJobs(taskId)
-	p.API.LogDebug("removeJob", "jobList", jobList)
+
+	found := false
+	for i, ir := range jobList {
+		if ir.JobID == jobId {
+			job := jobList[i]
+			job.JobTitle = jobTitle
+			job.JobContent = jobContent
+			found = true
+		}
+	}
+
+	if !found {
+		return errors.New("cannot find jobId")
+	}
+
+	jsonJobList, jsonErr := json.Marshal(jobList)
+	if jsonErr != nil {
+		return errors.New(jsonErr.Error())
+	}
+
+	appErr := p.API.KVSet(taskKey(taskId), jsonJobList)
+	if appErr != nil {
+		return errors.New(appErr.Error())
+	}
+
+	return nil
+}
+
+func (p *Plugin) removeJob(taskId, jobId string) error {
+	if taskId == "" {
+		return errors.New("taskId is required.")
+	}
+	if jobId == "" {
+		return errors.New("jobId is required.")
+	}
+
+	jobList, _ := p.listJobs(taskId)
 
 	found := false
 	for i, ir := range jobList {
 		if ir.JobID == jobId {
 			jobList = append(jobList[:i], jobList[i+1:]...)
+			found = true
+		}
+	}
+
+	if !found {
+		return errors.New("cannot find jobId")
+	}
+
+	jsonJobList, jsonErr := json.Marshal(jobList)
+	if jsonErr != nil {
+		return errors.New(jsonErr.Error())
+	}
+
+	appErr := p.API.KVSet(taskKey(taskId), jsonJobList)
+	if appErr != nil {
+		return errors.New(appErr.Error())
+	}
+
+	return nil
+}
+
+func (p *Plugin) statusJob(taskId, jobId, status string) error {
+	if taskId == "" {
+		return errors.New("taskId is required.")
+	}
+	if jobId == "" {
+		return errors.New("jobId is required.")
+	}
+	if status == "" {
+		return errors.New("jobId is required.")
+	}
+	if !(status == "open" || status == "done") {
+		return errors.New("status only [open] or [done].")
+	}
+
+	jobList, _ := p.listJobs(taskId)
+
+	found := false
+	for i, ir := range jobList {
+		if ir.JobID == jobId {
+			job := jobList[i]
+			job.JobStatus = status
 			found = true
 		}
 	}

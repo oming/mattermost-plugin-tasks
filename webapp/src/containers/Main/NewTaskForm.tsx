@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
 import React, {useCallback} from 'react';
 
 import {
@@ -9,27 +7,29 @@ import {
     FormControl,
     FormGroup,
 } from 'react-bootstrap';
-import {Channel} from 'mattermost-redux/types/channels';
 
 import {Controller, useForm} from 'react-hook-form';
 
-import Client from '@/client';
-import {logDebug} from '@/utils/log';
-interface Props {
-    channel: Channel;
-}
+import {Channel} from 'mattermost-redux/types/channels';
+
+// import {DayPicker} from 'react-day-picker';
+
+import {useAppDispatch} from '@/hooks';
+import {fetchNewTask} from '@/reducers/taskSlice';
 
 interface FormData {
     channelId: string;
     taskTitle: string;
 }
+
+interface Props {
+    channel: Channel;
+}
 export default function NewTaskForm({channel}: Props) {
-    logDebug('NewTaskForm Rendering');
+    const dispatch = useAppDispatch();
 
     const {
-        register,
         handleSubmit,
-        watch,
         formState: {errors},
         control,
     } = useForm<FormData>({
@@ -38,17 +38,14 @@ export default function NewTaskForm({channel}: Props) {
             taskTitle: '',
         },
     });
-    const onSubmit = useCallback((formValues: FormData) => {
-        if (formValues) {
-            logDebug('formValues', formValues);
-            Client.postTasks({
-                channel_id: formValues.channelId,
-                task_title: formValues.taskTitle,
-            }).then((result) => {
-                logDebug('result:', result);
-            });
-        }
-    }, []);
+    const onSubmit = useCallback(
+        (formValues: FormData) => {
+            if (formValues) {
+                dispatch(fetchNewTask(formValues));
+            }
+        },
+        [dispatch],
+    );
 
     return (
         <Form onSubmit={handleSubmit(onSubmit)}>

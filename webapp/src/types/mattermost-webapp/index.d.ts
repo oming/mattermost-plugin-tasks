@@ -15,7 +15,7 @@ export interface PluginRegistry {
     registerReducer(reducer: Reducer);
     registerChannelHeaderButtonAction(
         icon: ReactResolvable,
-        action: () => void,
+        action: (channel: Channel) => void,
         dropdownText: string,
         tooltipText: string,
     ): any;
@@ -27,6 +27,11 @@ export interface PluginRegistry {
         icon: ReactResolvable,
         action: () => void,
         tooltipText: string,
+    ): any;
+    registerPostDropdownMenuAction(
+        text: ReactResolvable,
+        action?: (...args: any) => void,
+        filter?: (id: string) => boolean,
     ): any;
     registerCustomRoute(route: string, component: ReactResolvable): any;
     registerProductRoute(route: string, component: ReactResolvable): any;

@@ -41,7 +41,7 @@ func (p *Plugin) taskListToString(tasks []*Task) string {
 		mmMention := ""
 		mmUser, getErr := p.API.GetUser(task.UserId)
 		if getErr != nil {
-			p.API.LogDebug("Unable to get mm user details", "Error", getErr.Error())
+			p.API.LogError("Unable to get mm user details", "Error", getErr.Error())
 		} else {
 			mmMention = fmt.Sprintf("@%s ", mmUser.Username)
 		}

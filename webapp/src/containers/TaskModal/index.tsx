@@ -1,102 +1,71 @@
-/* eslint-disable dot-location */
-/* eslint-disable prettier/prettier */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-console */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo} from 'react';
 
-import {useSelector, useDispatch} from 'react-redux';
+import {
+    globalModalClose,
+    reset as globalReset,
+    globalSliceSelector,
+} from '@/reducers/globalSlice';
 
-import {getCurrentChannel} from 'mattermost-redux/selectors/entities/channels';
+import {logInfo} from '@/utils/log';
+import {useAppDispatch, useAppSelector} from '@/hooks';
+import Header from '@/components/modal/Header';
+import Body from '@/components/modal/Body';
+import Modal from '@/components/modal';
+import TadaIcon from '@/components/icons/TadaIcon';
+import Detail from '../Detail';
+import Main from '../Main';
 
-import {Button, Modal} from 'react-bootstrap';
+import {reset as taskReset} from '@/reducers/taskSlice';
+import {reset as jobReset} from '@/reducers/jobSlice';
 
-import {GlobalState} from 'mattermost-redux/types/store';
-
-import {Channel} from 'mattermost-redux/types/channels';
-
-import {TasksType} from '@/types';
-
-import {globalModalClose, setChannel, reset} from '@/reducers/globalModal';
-import JobsTable from '../Detail/JobsTable';
-import TasksTable from '../Main/TasksTable';
-import usePluginState from '@/hooks/usePluginState';
-import {logDebug} from '@/utils/log';
-import useChannel from '@/hooks/useChannel';
-
-export default function TasksModal(props: any) {
-    logDebug('TasksModal Rendering ', props);
-
-    const dispatch = useDispatch();
-    const globalModalState = useSelector<GlobalState >(
-        (state) => logDebug('state...', state),
-    );
-    const [step, setStep] = useState<string>('tasks');
-    const [task, setTask] = useState<TasksType | null>(null);
-
-    const {channel} = useChannel();
-
-    const {visible: isModalVisible, reload} = usePluginState();
-
+export default function TaskModal(props: any) {
+    const dispatch = useAppDispatch();
+    const {visible, step, channel} = useAppSelector(globalSliceSelector);
     useEffect(() => {
-        logDebug('TasksModal Init');
-        dispatch(setChannel(channel));
+        logInfo('useEffect TaskModal');
         return () => {
-            logDebug('TasksModal Close');
-            dispatch(reset());
+            dispatch(globalReset());
+            dispatch(taskReset());
+            dispatch(jobReset());
         };
-    }, [channel, dispatch]);
-
-    const handleStepBackwardClick = useCallback(
-        (event: React.MouseEvent<Button> | undefined): void => {
-            if (event) {
-                setTask(null);
-                setStep('tasks');
-            }
-        },
-        [],
-    );
-
-    const handleModalHide = useCallback(() => {
-        logDebug('TasksModal Closed.');
-        dispatch(globalModalClose());
-        dispatch(reset());
     }, [dispatch]);
 
-    if (!channel) {
-        logDebug('TasksModal Channel is Empty', channel);
-        return <></>;
-    }
+    const handleModalHide = useCallback(() => {
+        dispatch(globalModalClose());
+        dispatch(globalReset());
+        dispatch(taskReset());
+        dispatch(jobReset());
+    }, [dispatch]);
+
+    const headerTitle = useMemo(() => {
+        // Tasks::Town-Squore
+        // Tasks::Town-Squore::xAdfjsofowdkfoxojowef
+
+        let title = 'Tasks::';
+        title += channel.display_name;
+        if (step.task) {
+            title += '::' + step.task.taskId;
+        }
+        return title;
+    }, [channel, step]);
 
     let template;
-    if (step === 'tasks' && task === null) {
-        template = <TasksTable channel={channel} setTask={setTask} />;
-    } else if (task) {
-        template = (
-            <JobsTable
-                task={task}
-                handleStepBackwardClick={handleStepBackwardClick}
-            />
-        );
+    if (step.type === 'task') {
+        template = <Main />;
+    } else if (step.type === 'job' && step.task) {
+        template = <Detail />;
     } else {
-        template = <></>;
+        template = <TadaIcon />;
     }
 
-    logDebug('TasksModal Rander Start');
     return (
         <>
-            <Modal
-                bsSize='large'
-                aria-labelledby='contained-modal-title-lg'
-                show={isModalVisible}
-                onHide={handleModalHide}
-            >
-                <Modal.Header closeButton={true}>
-                    <Modal.Title>
-                        {'Tasks:: ' + channel.display_name}
-                    </Modal.Title>
-                </Modal.Header>
-                <Modal.Body>{template}</Modal.Body>
-            </Modal>
+            {visible && (
+                <Modal show={visible} onEventCallback={handleModalHide}>
+                    <Header title={headerTitle} />
+                    <Body>{template}</Body>
+                </Modal>
+            )}
         </>
     );
 }

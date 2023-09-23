@@ -6,6 +6,16 @@ import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
 import {id as pluginId} from './manifest';
+import {
+    ReqChannelIdType,
+    ReqDeleteTaskType,
+    ReqJobIdType,
+    ReqNewJobType,
+    ReqNewTaskType,
+    ReqRemoveJobType,
+    ReqStatusJobType,
+    ReqTaskIdType,
+} from './types';
 
 class ClientClass {
     url = '';
@@ -18,27 +28,59 @@ class ClientClass {
         return this.doGet(`${this.url}/config`);
     };
 
-    getTasks = async (channelId: string) => {
-        return this.doGet(`${this.url}/tasks?channelId=${channelId}`);
-    };
-    postTasks = async (payload: any) => {
-        return this.doPost(`${this.url}/tasks`, payload);
-    };
-    deleteTasks = async (payload: any) => {
-        return this.doDelete(`${this.url}/tasks`, payload);
+    httpShowTask = async (channelId: ReqChannelIdType) => {
+        return this.doGet(`${this.url}/t/${channelId}/tasks`);
     };
 
-    getJobs = async (taskId: string) => {
-        return this.doGet(`${this.url}/jobs?taskId=${taskId}`);
+    httpNewTask = async ({channelId, taskTitle}: ReqNewTaskType) => {
+        return this.doPost(`${this.url}/t/${channelId}/tasks`, {taskTitle});
     };
-    postJobs = async (payload: any) => {
-        return this.doPost(`${this.url}/jobs`, payload);
+
+    httpUpdateTask = async ({
+        channelId,
+        taskId,
+        taskTitle,
+    }: {taskId: ReqTaskIdType} & ReqNewTaskType) => {
+        return this.doPut(`${this.url}/t/${channelId}/tasks/${taskId}`, {
+            taskTitle,
+        });
     };
-    deleteJobs = async (payload: any) => {
-        return this.doDelete(`${this.url}/jobs`, payload);
+
+    httpDeleteTask = async ({channelId, taskId}: ReqDeleteTaskType) => {
+        return this.doDelete(`${this.url}/t/${channelId}/tasks/${taskId}`);
     };
-    putJobs = async (payload: any) => {
-        return this.doPut(`${this.url}/jobs`, payload);
+
+    httpListJob = async (taskId: ReqTaskIdType) => {
+        return this.doGet(`${this.url}/j/${taskId}/jobs`);
+    };
+
+    httpAddJob = async ({taskId, jobTitle, jobContent}: ReqNewJobType) => {
+        return this.doPost(`${this.url}/j/${taskId}/jobs`, {
+            jobTitle,
+            jobContent,
+        });
+    };
+
+    httpUpdateJob = async ({
+        taskId,
+        jobId,
+        jobTitle,
+        jobContent,
+    }: {jobId: ReqJobIdType} & ReqNewJobType) => {
+        return this.doPut(`${this.url}/j/${taskId}/jobs/${jobId}`, {
+            jobTitle,
+            jobContent,
+        });
+    };
+
+    httpRemoveJob = async ({taskId, jobId}: ReqRemoveJobType) => {
+        return this.doDelete(`${this.url}/j/${taskId}/jobs/${jobId}`);
+    };
+
+    httpStatusJob = async ({taskId, jobId, jobStatus}: ReqStatusJobType) => {
+        return this.doPut(`${this.url}/j/${taskId}/jobs/${jobId}/status`, {
+            jobStatus,
+        });
     };
 
     doGet = async (url: string, headers: {[key: string]: any} = {}) => {
