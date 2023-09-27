@@ -18,14 +18,7 @@ import {Row} from 'react-table';
 
 import {useAppDispatch} from '@/hooks';
 import {fetchUpdateTask} from '@/reducers/taskSlice';
-import {TaskType} from '@/types';
-
-interface FormData {
-    channelId: string;
-    taskId: string;
-    taskTitle: string;
-}
-
+import {ReqUpdateTaskType, TaskType} from '@/types';
 interface Props {
     channel: Channel;
     row: Row<TaskType>;
@@ -38,7 +31,7 @@ export default function ModifyTaskForm({channel, row: {original}}: Props) {
         handleSubmit,
         formState: {errors},
         control,
-    } = useForm<FormData>({
+    } = useForm<ReqUpdateTaskType>({
         defaultValues: {
             channelId: channel.id,
             taskId: task.taskId,
@@ -46,7 +39,7 @@ export default function ModifyTaskForm({channel, row: {original}}: Props) {
         },
     });
     const onSubmit = useCallback(
-        (formValues: FormData) => {
+        (formValues: ReqUpdateTaskType) => {
             if (formValues) {
                 dispatch(fetchUpdateTask(formValues));
             }

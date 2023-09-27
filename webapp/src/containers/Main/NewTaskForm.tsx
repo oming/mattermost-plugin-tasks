@@ -16,12 +16,7 @@ import {Channel} from 'mattermost-redux/types/channels';
 
 import {useAppDispatch} from '@/hooks';
 import {fetchNewTask} from '@/reducers/taskSlice';
-
-interface FormData {
-    channelId: string;
-    taskTitle: string;
-}
-
+import {ReqNewTaskType} from '@/types';
 interface Props {
     channel: Channel;
 }
@@ -32,14 +27,14 @@ export default function NewTaskForm({channel}: Props) {
         handleSubmit,
         formState: {errors},
         control,
-    } = useForm<FormData>({
+    } = useForm<ReqNewTaskType>({
         defaultValues: {
             channelId: channel.id,
             taskTitle: '',
         },
     });
     const onSubmit = useCallback(
-        (formValues: FormData) => {
+        (formValues: ReqNewTaskType) => {
             if (formValues) {
                 dispatch(fetchNewTask(formValues));
             }

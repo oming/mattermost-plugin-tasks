@@ -8,28 +8,50 @@ export interface MyKnownError {
 }
 
 export type ReqChannelIdType = string;
+export type ReqTaskIdType = string;
+export type ReqJobIdType = string;
+
+export type ReqShowTaskType = {
+    channelId: ReqChannelIdType;
+};
 export type ReqNewTaskType = {
-    channelId: string;
+    channelId: ReqChannelIdType;
+    taskTitle: string;
+};
+export type ReqUpdateTaskType = {
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
     taskTitle: string;
 };
 export type ReqDeleteTaskType = {
-    channelId: string;
-    taskId: string;
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
 };
-
-export type ReqTaskIdType = string;
-export type ReqJobIdType = string;
+export type ReqListJobType = {
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
+};
 export type ReqNewJobType = {
-    taskId: string;
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
+    jobTitle: string;
+    jobContent: string;
+};
+export type ReqUpdateJobType = {
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
+    jobId: ReqJobIdType;
     jobTitle: string;
     jobContent: string;
 };
 export type ReqRemoveJobType = {
-    taskId: string;
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
     jobId: string;
 };
 export type ReqStatusJobType = {
-    taskId: string;
+    channelId: ReqChannelIdType;
+    taskId: ReqTaskIdType;
     jobId: string;
     jobStatus: string;
 };

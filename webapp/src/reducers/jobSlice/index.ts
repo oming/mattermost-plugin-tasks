@@ -15,6 +15,8 @@ import {
     ReqStatusJobType,
     ReqRemoveJobType,
     ReqJobIdType,
+    ReqListJobType,
+    ReqUpdateJobType,
 } from '@/types';
 import Client from '@/client';
 import {RootState} from '@/reducers';
@@ -29,13 +31,15 @@ const initialState: JobState = {
 
 export const fetchJobByTaskId = createAsyncThunk<
     JobType[],
-    ReqTaskIdType,
+    ReqListJobType,
     {rejectValue: MyKnownError}
->('job/fetchJobByTaskId', async (taskId, {rejectWithValue}) => {
+>('job/fetchJobByTaskId', async ({channelId, taskId}, {rejectWithValue}) => {
     try {
-        const response = await Client.httpListJob(taskId).then((result) => {
-            return result;
-        });
+        const response = await Client.httpListJob({channelId, taskId}).then(
+            (result) => {
+                return result;
+            },
+        );
         return response;
     } catch (err) {
         return rejectWithValue({
@@ -52,9 +56,10 @@ export const fetchNewJob = createAsyncThunk<
     {rejectValue: MyKnownError}
 >(
     'job/fetchNewJob',
-    async ({taskId, jobTitle, jobContent}, {rejectWithValue}) => {
+    async ({channelId, taskId, jobTitle, jobContent}, {rejectWithValue}) => {
         try {
             const response = await Client.httpAddJob({
+                channelId,
                 taskId,
                 jobTitle,
                 jobContent,
@@ -74,14 +79,18 @@ export const fetchUpdateJob = createAsyncThunk<
     // 성공 시 리턴 타입
     string,
     // input type. 아래 콜백함수에서 userId 인자가 input에 해당
-    {jobId: ReqJobIdType} & ReqNewJobType,
+    ReqUpdateJobType,
     // ThunkApi 정의({dispatch?, state?, extra?, rejectValue?})
     {rejectValue: MyKnownError}
 >(
     'job/fetchUpdateJob',
-    async ({taskId, jobId, jobTitle, jobContent}, {rejectWithValue}) => {
+    async (
+        {channelId, taskId, jobId, jobTitle, jobContent},
+        {rejectWithValue},
+    ) => {
         try {
             const response = await Client.httpUpdateJob({
+                channelId,
                 taskId,
                 jobId,
                 jobTitle,
@@ -105,21 +114,25 @@ export const fetchRemoveJob = createAsyncThunk<
     ReqRemoveJobType,
     // ThunkApi 정의({dispatch?, state?, extra?, rejectValue?})
     {rejectValue: MyKnownError}
->('job/fetchRemoveJob', async ({taskId, jobId}, {rejectWithValue}) => {
-    try {
-        const response = await Client.httpRemoveJob({
-            taskId,
-            jobId,
-        }).then((result) => {
-            return result;
-        });
-        return response;
-    } catch (err) {
-        return rejectWithValue({
-            errorMessage: '알 수 없는 에러가 발생했습니다.',
-        });
-    }
-});
+>(
+    'job/fetchRemoveJob',
+    async ({channelId, taskId, jobId}, {rejectWithValue}) => {
+        try {
+            const response = await Client.httpRemoveJob({
+                channelId,
+                taskId,
+                jobId,
+            }).then((result) => {
+                return result;
+            });
+            return response;
+        } catch (err) {
+            return rejectWithValue({
+                errorMessage: '알 수 없는 에러가 발생했습니다.',
+            });
+        }
+    },
+);
 
 export const fetchStatusJob = createAsyncThunk<
     // 성공 시 리턴 타입
@@ -130,9 +143,10 @@ export const fetchStatusJob = createAsyncThunk<
     {rejectValue: MyKnownError}
 >(
     'job/fetchStatusJob',
-    async ({taskId, jobId, jobStatus}, {rejectWithValue}) => {
+    async ({channelId, taskId, jobId, jobStatus}, {rejectWithValue}) => {
         try {
             const response = await Client.httpStatusJob({
+                channelId,
                 taskId,
                 jobId,
                 jobStatus,
