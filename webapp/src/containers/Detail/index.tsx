@@ -37,18 +37,21 @@ export default function Detail() {
     const {loading, entities, showPanel, reload} =
         useAppSelector(jobSliceSelector);
     const {
+        channel,
         step: {task},
         direct,
     } = useAppSelector(globalSliceSelector);
 
     useEffect(() => {
-        if (task) {
-            dispatch(fetchJobByTaskId(task.taskId));
+        if (channel && task) {
+            dispatch(
+                fetchJobByTaskId({channelId: channel.id, taskId: task.taskId}),
+            );
         }
         if (direct) {
             dispatch(setShowPanel(true));
         }
-    }, [direct, dispatch, reload, task]);
+    }, [channel, direct, dispatch, reload, task]);
 
     const handleStepBackwardClick = useCallback(() => {
         dispatch(setStep({type: 'task'}));
@@ -65,9 +68,10 @@ export default function Detail() {
 
     const handdleStatusToggle = useCallback(
         (job: JobType) => () => {
-            if (task && !direct) {
+            if (channel && task && !direct) {
                 dispatch(
                     fetchStatusJob({
+                        channelId: channel.id,
                         taskId: task.taskId,
                         jobId: job.jobId,
                         jobStatus: job.jobStatus === 'open' ? 'done' : 'open',
@@ -75,18 +79,22 @@ export default function Detail() {
                 );
             }
         },
-        [direct, dispatch, task],
+        [channel, direct, dispatch, task],
     );
 
     const handdleJobDeleteClick = useCallback(
         (job: JobType) => () => {
-            if (task) {
+            if (channel && task) {
                 dispatch(
-                    fetchRemoveJob({taskId: task.taskId, jobId: job.jobId}),
+                    fetchRemoveJob({
+                        channelId: channel.id,
+                        taskId: task.taskId,
+                        jobId: job.jobId,
+                    }),
                 );
             }
         },
-        [dispatch, task],
+        [channel, dispatch, task],
     );
     const columns = useMemo<Column<JobType>[]>(
         () => [
@@ -150,7 +158,7 @@ export default function Detail() {
 
             {showPanel && (
                 <Panel headerTitle='새로운 할일을 추가합니다.'>
-                    <AddJobForm task={task} direct={direct} />
+                    <AddJobForm channel={channel} task={task} direct={direct} />
                 </Panel>
             )}
 
@@ -160,7 +168,7 @@ export default function Detail() {
                 data={entities}
                 handleDeleteClick={handdleJobDeleteClick}
                 renderModifyComponent={(data) => (
-                    <ModifyJobForm task={task} row={data} />
+                    <ModifyJobForm channel={channel} task={task} row={data} />
                 )}
                 editable={!direct}
             />

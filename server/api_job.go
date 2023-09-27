@@ -5,18 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mattermost/mattermost/server/public/model"
 )
-
-func (p *Plugin) TaskRequired(c *gin.Context) {
-	taskId := c.Param("taskId")
-
-	if taskId == "" {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"msg": "taskId is required"})
-		return
-	}
-
-	c.Set("taskId", taskId)
-}
 
 type ListType struct {
 	Num        int    `json:"num"`
@@ -74,8 +64,8 @@ type ReqJobAddType struct {
 }
 
 func (p *Plugin) handleJobCreate(c *gin.Context) {
-
-	userId := c.MustGet("userId").(string)
+	channel := c.MustGet("channel").(*model.Channel)
+	user := c.MustGet("user").(*model.User)
 	taskId := c.MustGet("taskId").(string)
 
 	var json ReqJobAddType
@@ -84,18 +74,30 @@ func (p *Plugin) handleJobCreate(c *gin.Context) {
 		return
 	}
 
-	job, err := p.addJob(taskId, json.JobTitle, json.JobContent, userId)
+	job, err := p.addJob(taskId, json.JobTitle, json.JobContent, user.Id)
 	if err != nil {
 		p.API.LogError("addCmmand Execute", "err", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
 		return
 	}
 
-	c.JSON(http.StatusOK, job)
+	msg := fmt.Sprintf("@%s, added a new job. taskId: %s, jobId: %s", user.Username, taskId, job.JobID)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
+	}
 
+	c.JSON(http.StatusOK, job)
 }
 
 func (p *Plugin) handleJobUpdate(c *gin.Context) {
+	channel := c.MustGet("channel").(*model.Channel)
+	user := c.MustGet("user").(*model.User)
 	taskId := c.MustGet("taskId").(string)
 	jobId := c.Param("jobId")
 
@@ -111,11 +113,23 @@ func (p *Plugin) handleJobUpdate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"msg": err})
 	}
 
+	msg := fmt.Sprintf("@%s, modified the job. taskId: %s, jobId: %s", user.Username, taskId, jobId)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
 func (p *Plugin) handleJobDelete(c *gin.Context) {
-
+	channel := c.MustGet("channel").(*model.Channel)
+	user := c.MustGet("user").(*model.User)
 	taskId := c.MustGet("taskId").(string)
 	jobId := c.Param("jobId")
 
@@ -131,6 +145,17 @@ func (p *Plugin) handleJobDelete(c *gin.Context) {
 		return
 	}
 
+	msg := fmt.Sprintf("@%s, deleted the job. taskId: %s, jobId: %s", user.Username, taskId, jobId)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
@@ -139,6 +164,8 @@ type ReqJobStatusType struct {
 }
 
 func (p *Plugin) handleJobStatusUpdate(c *gin.Context) {
+	channel := c.MustGet("channel").(*model.Channel)
+	user := c.MustGet("user").(*model.User)
 	taskId := c.MustGet("taskId").(string)
 	jobId := c.Param("jobId")
 
@@ -152,6 +179,17 @@ func (p *Plugin) handleJobStatusUpdate(c *gin.Context) {
 	if err != nil {
 		p.API.LogError("addCmmand Execute", "err", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"msg": err})
+	}
+
+	msg := fmt.Sprintf("@%s, changed the status of the job. taskId: %s, jobId: %s, status: %s", user.Username, taskId, jobId, json.JobStatus)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"msg": "success"})

@@ -18,19 +18,6 @@ type ShowType struct {
 	DeleteAt  int64  `json:"deleteAt"`
 }
 
-func (p *Plugin) ChannelRequired(c *gin.Context) {
-
-	channelId := c.Param("channelId")
-
-	channel, err := p.API.GetChannel(channelId)
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
-	c.Set("channel", channel)
-
-}
-
 func (p *Plugin) handleTask(c *gin.Context) {
 
 	channel := c.MustGet("channel").(*model.Channel)
@@ -75,7 +62,7 @@ type ReqTaskNewType struct {
 func (p *Plugin) handleTaskCreate(c *gin.Context) {
 
 	channel := c.MustGet("channel").(*model.Channel)
-	userId := c.MustGet("userId").(string)
+	user := c.MustGet("user").(*model.User)
 
 	var json ReqTaskNewType
 	if err := c.ShouldBindJSON(&json); err != nil {
@@ -83,20 +70,32 @@ func (p *Plugin) handleTaskCreate(c *gin.Context) {
 		return
 	}
 
-	task, err := p.newTask(channel.Id, json.TaskTitle, userId)
+	task, err := p.newTask(channel.Id, json.TaskTitle, user.Id)
 	if err != nil {
 		p.API.LogError("newCmmand Execute", "err", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
 		return
 
 	}
+
+	msg := fmt.Sprintf("@%s, added a new task. taskId: %s", user.Username, task.TaskID)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
+	}
+
 	c.JSON(http.StatusOK, task)
 }
 
 func (p *Plugin) handleTaskUpdate(c *gin.Context) {
 
 	channel := c.MustGet("channel").(*model.Channel)
-	userId := c.MustGet("userId").(string)
+	user := c.MustGet("user").(*model.User)
 	taskId := c.Param("taskId")
 
 	var json ReqTaskNewType
@@ -105,24 +104,47 @@ func (p *Plugin) handleTaskUpdate(c *gin.Context) {
 		return
 	}
 
-	err := p.updateTask(channel.Id, taskId, json.TaskTitle, userId)
+	err := p.updateTask(channel.Id, taskId, json.TaskTitle, user.Id)
 	if err != nil {
 		p.API.LogError("UpdateCmmand Execute", "err", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
 		return
-
 	}
+
+	msg := fmt.Sprintf("@%s, modified the task. taskId: %s", user.Username, taskId)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"msg": "success"})
 }
 
 func (p *Plugin) handleTaskDelete(c *gin.Context) {
 
 	channel := c.MustGet("channel").(*model.Channel)
+	user := c.MustGet("user").(*model.User)
 	taskId := c.Param("taskId")
 
 	err := p.deleteTask(channel.Id, taskId)
 	if err != nil {
 		p.API.LogError("deleteCmmand Execute", "channel", channel, "taskId", taskId, "Error", err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
+		return
+	}
+
+	msg := fmt.Sprintf("@%s, deleted the task. taskId: %s", user.Username, taskId)
+	_, appErr := p.API.CreatePost(&model.Post{
+		UserId:    p.BotUserID,
+		ChannelId: channel.Id,
+		Message:   msg,
+	})
+	if appErr != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"msg": err})
 		return
 	}

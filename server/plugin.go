@@ -32,13 +32,13 @@ PUT		/{channelId}/tasks/{taskId}		task 수정
 			{task_title: "xxxx"}
 DELETE	/{channelId}/tasks/{taskId}		tasks 제거 (delete)
 
-GET		/{taskId}/jobs					할일 목록 조회(list)
-POST    /{taskId}/jobs					할일 목록 추가(add)
+GET		/{channelId}/tasks/{taskId}/jobs					할일 목록 조회(list)
+POST    /{channelId}/tasks/{taskId}/jobs					할일 목록 추가(add)
 			{jobTitle: "XXX", jobContent: "XXX"}
-PUT		/{taskId}/jobs/{jobId}			할일 목록 수정
+PUT		/{channelId}/tasks/{taskId}/jobs/{jobId}			할일 목록 수정
 			{jobTitle: "XXX", jobContent: "XXX"}
-DELETE  /{taskId}/jobs/{jobId}			할일 제거(remove)
-PUT     /{taskId}/jobs/{jobId}/status	상태변경(status)
+DELETE  /{channelId}/tasks/{taskId}/jobs/{jobId}			할일 제거(remove)
+PUT     /{channelId}/tasks/{taskId}/jobs/{jobId}/status	상태변경(status)
 			{status: "open|done"}
 
 GET 	/config							설정 파일 확인
@@ -56,14 +56,15 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	router.Use(p.ginlogger)
 	router.Use(p.MattermostAuthorizationRequired)
 
-	taskRouter := router.Group("t/:channelId")
+	taskRouter := router.Group("/:channelId")
 	taskRouter.Use(p.ChannelRequired)
 	taskRouter.GET("/tasks", p.handleTask)
 	taskRouter.POST("/tasks", p.handleTaskCreate)
 	taskRouter.PUT("tasks/:taskId", p.handleTaskUpdate)
 	taskRouter.DELETE("tasks/:taskId", p.handleTaskDelete)
 
-	jobRouter := router.Group("j/:taskId")
+	jobRouter := router.Group("/:channelId/tasks/:taskId")
+	jobRouter.Use(p.ChannelRequired)
 	jobRouter.Use(p.TaskRequired)
 	jobRouter.GET("/jobs", p.handleJob)
 	jobRouter.POST("/jobs", p.handleJobCreate)
@@ -91,11 +92,36 @@ func (p *Plugin) MattermostAuthorizationRequired(c *gin.Context) {
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	if _, err := p.API.GetUser(userID); err != nil {
+	user, err := p.API.GetUser(userID)
+	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-	c.Set("userId", userID)
+	c.Set("user", user)
+}
+
+func (p *Plugin) ChannelRequired(c *gin.Context) {
+
+	channelId := c.Param("channelId")
+
+	channel, err := p.API.GetChannel(channelId)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	c.Set("channel", channel)
+
+}
+
+func (p *Plugin) TaskRequired(c *gin.Context) {
+	taskId := c.Param("taskId")
+
+	if taskId == "" {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"msg": "taskId is required"})
+		return
+	}
+
+	c.Set("taskId", taskId)
 }
 
 // See https://developers.mattermost.com/extend/plugins/server/reference/

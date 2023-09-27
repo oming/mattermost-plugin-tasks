@@ -11,7 +11,9 @@ import {
     ReqChannelIdType,
     ReqDeleteTaskType,
     ReqNewTaskType,
+    ReqShowTaskType,
     ReqTaskIdType,
+    ReqUpdateTaskType,
     TaskState,
     TaskType,
 } from '@/types';
@@ -30,14 +32,16 @@ export const fetchTaskByChannelId = createAsyncThunk<
     // 성공 시 리턴 타입
     TaskType[],
     // input type. 아래 콜백함수에서 userId 인자가 input에 해당
-    ReqChannelIdType,
+    ReqShowTaskType,
     // ThunkApi 정의({dispatch?, state?, extra?, rejectValue?})
     {rejectValue: MyKnownError}
->('task/fetchTaskByChannelId', async (channelId, {rejectWithValue}) => {
+>('task/fetchTaskByChannelId', async ({channelId}, {rejectWithValue}) => {
     try {
-        const response = await Client.httpShowTask(channelId).then((result) => {
-            return result;
-        });
+        const response = await Client.httpShowTask({channelId}).then(
+            (result) => {
+                return result;
+            },
+        );
         return response;
     } catch (err) {
         return rejectWithValue({
@@ -73,7 +77,7 @@ export const fetchUpdateTask = createAsyncThunk<
     // 성공 시 리턴 타입
     string,
     // input type. 아래 콜백함수에서 userId 인자가 input에 해당
-    {taskId: ReqTaskIdType} & ReqNewTaskType,
+    ReqUpdateTaskType,
     // ThunkApi 정의({dispatch?, state?, extra?, rejectValue?})
     {rejectValue: MyKnownError}
 >(

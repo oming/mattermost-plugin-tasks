@@ -12,21 +12,18 @@ import {Controller, useForm} from 'react-hook-form';
 
 import {Row} from 'react-table';
 
-import {JobType, TaskType} from '@/types';
+import {Channel} from 'mattermost-redux/types/channels';
+
+import {JobType, ReqUpdateJobType, TaskType} from '@/types';
 import {useAppDispatch} from '@/hooks';
 import {fetchUpdateJob} from '@/reducers/jobSlice';
 interface Props {
+    channel: Channel;
     task: TaskType;
     row: Row<JobType>;
 }
 
-interface FormData {
-    taskId: string;
-    jobId: string;
-    jobTitle: string;
-    jobContent: string;
-}
-export default function ModifyJobForm({task, row: {original}}: Props) {
+export default function ModifyJobForm({channel, task, row: {original}}: Props) {
     const dispatch = useAppDispatch();
     const job = original;
 
@@ -34,8 +31,9 @@ export default function ModifyJobForm({task, row: {original}}: Props) {
         handleSubmit,
         formState: {errors},
         control,
-    } = useForm<FormData>({
+    } = useForm<ReqUpdateJobType>({
         defaultValues: {
+            channelId: channel.id,
             taskId: task.taskId,
             jobId: job.jobId,
             jobTitle: job.jobTitle,
@@ -44,7 +42,7 @@ export default function ModifyJobForm({task, row: {original}}: Props) {
     });
 
     const onSubmit = useCallback(
-        (formValues: FormData) => {
+        (formValues: ReqUpdateJobType) => {
             if (formValues) {
                 dispatch(fetchUpdateJob(formValues));
             }

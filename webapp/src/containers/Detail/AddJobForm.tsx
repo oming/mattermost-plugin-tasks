@@ -10,22 +10,20 @@ import {
 
 import {Controller, useForm} from 'react-hook-form';
 
-import {DirectPostType, TaskType} from '@/types';
+import {Channel} from 'mattermost-redux/types/channels';
+
+import {DirectPostType, ReqNewJobType, TaskType} from '@/types';
 import {useAppDispatch, useAppSelector} from '@/hooks';
 import {fetchNewJob} from '@/reducers/jobSlice';
 import {getServerRoute} from '@/utils/utils';
 import {resetDirectPost} from '@/reducers/globalSlice';
 interface Props {
+    channel: Channel;
     task: TaskType;
     direct?: DirectPostType;
 }
 
-interface FormData {
-    taskId: string;
-    jobTitle: string;
-    jobContent: string;
-}
-export default function AddJobForm({task, direct}: Props) {
+export default function AddJobForm({channel, task, direct}: Props) {
     const dispatch = useAppDispatch();
 
     const serverRoute = useAppSelector((state) => getServerRoute(state));
@@ -40,8 +38,9 @@ export default function AddJobForm({task, direct}: Props) {
         handleSubmit,
         formState: {errors},
         control,
-    } = useForm<FormData>({
+    } = useForm<ReqNewJobType>({
         defaultValues: {
+            channelId: channel.id,
             taskId: task.taskId,
             jobTitle: '',
             jobContent: message,
@@ -49,7 +48,7 @@ export default function AddJobForm({task, direct}: Props) {
     });
 
     const onSubmit = useCallback(
-        (formValues: FormData) => {
+        (formValues: ReqNewJobType) => {
             if (formValues) {
                 dispatch(fetchNewJob(formValues));
                 dispatch(resetDirectPost());

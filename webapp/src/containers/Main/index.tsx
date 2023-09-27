@@ -40,7 +40,7 @@ export default function Main() {
 
     useEffect(() => {
         if (channel) {
-            dispatch(fetchTaskByChannelId(channel.id));
+            dispatch(fetchTaskByChannelId({channelId: channel.id}));
         }
     }, [channel, reload, dispatch]);
 
